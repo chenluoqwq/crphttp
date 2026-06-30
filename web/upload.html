@@ -1,1 +1,35 @@
-大家好，我是蓝金宝
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>点击得分小游戏</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:微软雅黑}
+        body{background:#1a1a2e;color:#fff;text-align:center;padding-top:100px}
+        #score{font-size:40px;margin-bottom:30px}
+        #clickBtn{
+            width:180px;height:180px;border-radius:50%;
+            background:linear-gradient(45deg,#00a8ff,#9c88ff);
+            border:none;font-size:24px;color:#fff;cursor:pointer;
+            transition:0.1s transform;
+        }
+        #clickBtn:active{transform:scale(0.9)}
+        .tips{margin-top:40px;font-size:16px;opacity:0.7}
+    </style>
+</head>
+<body>
+    <div id="score">当前分数：0</div>
+    <button id="clickBtn">点我加分！</button>
+    <div class="tips">连续点击获得更高分数，挑战你的手速</div>
+
+    <script>
+        let score = 0;
+        const scoreDom = document.getElementById('score');
+        const btn = document.getElementById('clickBtn');
+        btn.onclick = function(){
+            score += 1;
+            scoreDom.innerText = `当前分数：${score}`;
+        }
+    </script>
+</body>
+</html>
