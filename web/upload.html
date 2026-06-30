@@ -2,33 +2,107 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>点击得分小游戏</title>
+    <title>手速点击挑战（5秒速战）</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:微软雅黑}
-        body{background:#1a1a2e;color:#fff;text-align:center;padding-top:100px}
-        #score{font-size:40px;margin-bottom:30px}
+        body{background:#1a1a2e;color:#fff;text-align:center;padding-top:60px}
+        .info-box{display:flex;justify-content:center;gap:60px;font-size:26px;margin-bottom:30px}
+        #score{color:#ffda79}
+        #time{color:#70e000}
+        #maxScore{color:#ff7675}
         #clickBtn{
-            width:180px;height:180px;border-radius:50%;
+            width:200px;height:200px;border-radius:50%;
             background:linear-gradient(45deg,#00a8ff,#9c88ff);
-            border:none;font-size:24px;color:#fff;cursor:pointer;
-            transition:0.1s transform;
+            border:none;font-size:26px;color:#fff;cursor:pointer;
+            transition:0.1s transform;user-select:none;
         }
         #clickBtn:active{transform:scale(0.9)}
+        #clickBtn:disabled{background:#444;cursor:not-allowed;transform:none}
         .tips{margin-top:40px;font-size:16px;opacity:0.7}
+        #restartBtn{
+            margin-top:20px;padding:12px 36px;font-size:18px;
+            background:#22c55e;color:#fff;border:none;border-radius:8px;
+            cursor:pointer;display:none;
+        }
     </style>
 </head>
 <body>
-    <div id="score">当前分数：0</div>
-    <button id="clickBtn">点我加分！</button>
-    <div class="tips">连续点击获得更高分数，挑战你的手速</div>
+    <div class="info-box">
+        <div>当前分数：<span id="score">0</span></div>
+        <div>剩余时间：<span id="time">5</span>s</div>
+        <div>历史最高：<span id="maxScore">0</span></div>
+    </div>
+    <button id="clickBtn">点击加分！</button>
+    <br>
+    <button id="restartBtn" onclick="restartGame()">重新挑战</button>
+    <div class="tips">5秒极速挑战，疯狂点击比拼手速，最高分自动保存</div>
 
     <script>
-        let score = 0;
+        // DOM元素
         const scoreDom = document.getElementById('score');
+        const timeDom = document.getElementById('time');
+        const maxDom = document.getElementById('maxScore');
         const btn = document.getElementById('clickBtn');
+        const restartBtn = document.getElementById('restartBtn');
+
+        // 游戏数据（修改此处时间为5）
+        let score = 0;
+        let timeLeft = 5;
+        let timer = null;
+        let gameStart = false;
+
+        // 读取本地存储最高分
+        let maxScore = localStorage.getItem('clickMax') || 0;
+        maxDom.innerText = maxScore;
+
+        // 点击按钮逻辑
         btn.onclick = function(){
+            // 游戏未开始则启动倒计时
+            if(!gameStart){
+                startTimer();
+                gameStart = true;
+            }
             score += 1;
-            scoreDom.innerText = `当前分数：${score}`;
+            scoreDom.innerText = score;
+        }
+
+        // 倒计时函数
+        function startTimer(){
+            timer = setInterval(()=>{
+                timeLeft -= 1;
+                timeDom.innerText = timeLeft;
+                if(timeLeft <= 0){
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000)
+        }
+
+        // 游戏结束结算
+        function endGame(){
+            btn.disabled = true;
+            // 更新最高分
+            if(score > maxScore){
+                maxScore = score;
+                localStorage.setItem('clickMax', maxScore);
+                maxDom.innerText = maxScore;
+                alert(`时间到！新纪录诞生！本次得分：${score}`);
+            }else{
+                alert(`时间到！本次得分：${score}，最高纪录：${maxScore}`);
+            }
+            restartBtn.style.display = 'inline-block';
+        }
+
+        // 重置游戏
+        function restartGame(){
+            clearInterval(timer);
+            score = 0;
+            timeLeft = 5;
+            gameStart = false;
+            scoreDom.innerText = 0;
+            timeDom.innerText = 5;
+            btn.disabled = false;
+            restartBtn.style.display = 'none';
         }
     </script>
 </body>
