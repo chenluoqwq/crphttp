@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>滑柱手速挑战 5秒</title>
+    <title>可乐瓶滑动手速挑战 5秒</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:微软雅黑}
         body{background:#1a1a2e;color:#fff;text-align:center;padding-top:40px;overflow:hidden}
@@ -10,18 +10,33 @@
         #score{color:#ffda79}
         #time{color:#70e000}
         #maxScore{color:#ff7675}
+        /* 滑动容器 */
         .container{
-            width:120px;height:420px;margin:0 auto;position:relative;
+            width:140px;height:440px;margin:0 auto;position:relative;
             background:rgba(255,255,255,0.05);border-radius:10px;
             border:1px solid rgba(255,255,255,0.1);
         }
-        /* 可滑动圆柱 */
-        .cylinder{
-            width:90px;height:140px;background:linear-gradient(90deg,#4890ff,#9c88ff,#4890ff);
-            border-radius:45px;position:absolute;left:15px;top:140px;
+        /* 可乐瓶主体 */
+        .cola-bottle{
+            width:72px;height:160px;position:absolute;left:34px;top:140px;
             cursor:grab;transition:transform 0.05s linear;
         }
-        .cylinder:active{cursor:grabbing}
+        .cola-bottle:active{cursor:grabbing}
+        /* 瓶盖 */
+        .cap{
+            width:30px;height:16px;background:#e6212a;border-radius:4px 4px 0 0;
+            margin:0 auto;
+        }
+        /* 瓶身 */
+        .bottle-body{
+            width:72px;height:134px;background:linear-gradient(90deg,#b80000,#e6212a,#b80000);
+            border-radius:12px 12px 24px 24px;position:relative;
+        }
+        /* 可乐白色波浪标 */
+        .wave{
+            position:absolute;width:50px;height:8px;background:#fff;
+            left:11px;top:40px;border-radius:50%;opacity:0.9;
+        }
         /* 底部两个支撑圆 */
         .base-dot{
             width:26px;height:26px;border-radius:50%;background:#667eea;
@@ -29,7 +44,12 @@
         }
         .dot1{left:22px}
         .dot2{right:22px}
-        /* 时间到抖动动画 */
+        /* 气泡喷射粒子 */
+        .bubble{
+            position:absolute;width:12px;height:12px;border-radius:50%;
+            background:#fff;opacity:0;pointer-events:none;
+        }
+        /* 抖动动画 */
         @keyframes shake {
             0%,100%{transform:translateX(0)}
             20%{transform:translateX(-8px)}
@@ -38,6 +58,11 @@
             80%{transform:translateX(8px)}
         }
         .shake{animation:shake 0.2s infinite}
+        /* 气泡上升喷发动画 */
+        @keyframes spray {
+            0%{opacity:1;transform:translateY(0) scale(1)}
+            100%{opacity:0;transform:translateY(-180px) scale(0.2)}
+        }
         #restartBtn{
             margin-top:30px;padding:12px 36px;font-size:18px;
             background:#22c55e;color:#fff;border:none;border-radius:8px;
@@ -53,20 +78,26 @@
         <div>历史最高：<span id="maxScore">0</span></div>
     </div>
 
-    <div class="container">
-        <div class="cylinder" id="dragBar"></div>
+    <div class="container" id="boxWrap">
+        <div class="cola-bottle" id="dragBar">
+            <div class="cap"></div>
+            <div class="bottle-body">
+                <div class="wave"></div>
+            </div>
+        </div>
         <div class="base-dot dot1"></div>
         <div class="base-dot dot2"></div>
     </div>
 
     <button id="restartBtn" onclick="restartGame()">重新挑战</button>
-    <div class="tips">按住圆柱上下滑动加分，限时5秒，分数自动保存</div>
+    <div class="tips">按住可乐瓶上下滑动加分，限时5秒，结束可乐会喷气泡！</div>
 
     <script>
         const scoreDom = document.getElementById('score');
         const timeDom = document.getElementById('time');
         const maxDom = document.getElementById('maxScore');
         const dragBar = document.getElementById('dragBar');
+        const boxWrap = document.getElementById('boxWrap');
         const restartBtn = document.getElementById('restartBtn');
 
         let score = 0;
@@ -74,10 +105,10 @@
         let timer = null;
         let gameStart = false;
         let gameOver = false;
-        let maxScore = localStorage.getItem('slideMax') || 0;
+        let maxScore = localStorage.getItem('colaMax') || 0;
         maxDom.innerText = maxScore;
 
-        // 拖拽变量
+        // 拖拽边界
         let isDrag = false;
         let barTop = 140;
         const minTop = 20;
@@ -93,15 +124,13 @@
             }
             e.preventDefault();
         }
-        // 鼠标移动
+        // 鼠标移动滑动计分
         document.onmousemove = (e)=>{
             if(!isDrag || gameOver) return;
             const box = dragBar.parentElement.getBoundingClientRect();
-            let newTop = e.clientY - box.top - 70;
-            // 边界限制
+            let newTop = e.clientY - box.top - 80;
             if(newTop < minTop) newTop = minTop;
             if(newTop > maxTop) newTop = maxTop;
-            // 滑动距离变化则加分
             if(Math.abs(newTop - barTop) > 6){
                 score += 1;
                 scoreDom.innerText = score;
@@ -109,50 +138,69 @@
                 dragBar.style.top = barTop + 'px';
             }
         }
-        // 松开停止拖拽
         document.onmouseup = ()=> isDrag = false;
 
         // 倒计时
         function startTimer(){
             timer = setInterval(()=>{
                 timeLeft--;
-                timeDom.innerText = timeLeft;
-                if(timeLeft <= 0){
-                    clearInterval(timer);
-                    endGame();
-                }
-            }, 1000)
-        }
-
-        // 游戏结束，开启抖动
-        function endGame(){
-            gameOver = true;
-            dragBar.classList.add('shake');
-            if(score > maxScore){
-                maxScore = score;
-                localStorage.setItem('slideMax', maxScore);
-                maxDom.innerText = maxScore;
-                alert(`时间结束！新纪录！得分：${score}`);
-            }else{
-                alert(`时间结束！本次得分：${score}，最高：${maxScore}`);
-            }
-            restartBtn.style.display = 'inline-block';
-        }
-
-        // 重置游戏
-        function restartGame(){
-            clearInterval(timer);
-            score = 0;
-            timeLeft = 5;
-            gameStart = false;
-            gameOver = false;
-            barTop = 140;
-            dragBar.style.top = barTop + 'px';
-            dragBar.classList.remove('shake');
-            scoreDom.innerText = 0;
-            timeDom.innerText = 5;
-            restartBtn.style.display = 'none';
-        }
-    </script>
-</body>
-</html>
+                 timeDom.innerText = timeLeft;
+                 if(timeLeft <= 0){
+                     clearInterval(timer);
+                     endGame();
+                 }
+             }, 1000)
+         }
+         // 游戏结束：抖动+可乐喷射气泡
+         function endGame(){
+             gameOver = true;
+             dragBar.classList.add('shake');
+             createSprayBubbles();
+             if(score > maxScore){
+                 maxScore = score;
+                 localStorage.setItem('colaMax', maxScore);
+                 maxDom.innerText = maxScore;
+                 alert(`时间结束！可乐喷发！新纪录！得分：${score}`);
+             }else{
+                 alert(`时间结束！可乐喷发！本次得分：${score}，最高：${maxScore}`);
+             }
+             restartBtn.style.display = 'inline-block';
+         }
+         // 生成可乐喷射气泡
+         function createSprayBubbles(){
+             const bottleRect = dragBar.getBoundingClientRect();
+             const wrapRect = boxWrap.getBoundingClientRect();
+             const bottleX = bottleRect.left - wrapRect.left + bottleRect.width / 2;
+             const bottleY = bottleRect.top - wrapRect.top;
+             // 生成30个气泡
+             for(let i = 0; i < 30; i++){
+                 const bubble = document.createElement('div');
+                 bubble.className = 'bubble';
+                 bubble.style.left = bottleX + (Math.random()*30 -15) + 'px';
+                 bubble.style.top = bottleY + 'px';
+                 bubble.style.animation = `spray ${1 + Math.random()}s linear forwards`;
+                 boxWrap.appendChild(bubble);
+                 // 气泡动画结束删除
+                 setTimeout(()=> bubble.remove(), 1200);
+             }
+         }
+         // 重置游戏
+         function restartGame(){
+             clearInterval(timer);
+             score = 0;
+             timeLeft = 5;
+             gameStart = false;
+             gameOver = false;
+             barTop = 140;
+             dragBar.style.top = barTop + 'px';
+             dragBar.classList.remove('shake');
+             // 清空残留气泡
+             document.querySelectorAll('.bubble').forEach(b=>b.remove());
+             scoreDom.innerText = 0;
+             timeDom.innerText = 5;
+             restartBtn.style.display = 'none';
+         }
+     </script>
+ </body>
+ </html>
+ 
