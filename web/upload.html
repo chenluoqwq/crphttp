@@ -2,28 +2,48 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>手速点击挑战（5秒速战）</title>
+    <title>滑柱手速挑战 5秒</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:微软雅黑}
-        body{background:#1a1a2e;color:#fff;text-align:center;padding-top:60px}
-        .info-box{display:flex;justify-content:center;gap:60px;font-size:26px;margin-bottom:30px}
+        body{background:#1a1a2e;color:#fff;text-align:center;padding-top:40px;overflow:hidden}
+        .info-box{display:flex;justify-content:center;gap:50px;font-size:24px;margin-bottom:30px}
         #score{color:#ffda79}
         #time{color:#70e000}
         #maxScore{color:#ff7675}
-        #clickBtn{
-            width:200px;height:200px;border-radius:50%;
-            background:linear-gradient(45deg,#00a8ff,#9c88ff);
-            border:none;font-size:26px;color:#fff;cursor:pointer;
-            transition:0.1s transform;user-select:none;
+        .container{
+            width:120px;height:420px;margin:0 auto;position:relative;
+            background:rgba(255,255,255,0.05);border-radius:10px;
+            border:1px solid rgba(255,255,255,0.1);
         }
-        #clickBtn:active{transform:scale(0.9)}
-        #clickBtn:disabled{background:#444;cursor:not-allowed;transform:none}
-        .tips{margin-top:40px;font-size:16px;opacity:0.7}
+        /* 可滑动圆柱 */
+        .cylinder{
+            width:90px;height:140px;background:linear-gradient(90deg,#4890ff,#9c88ff,#4890ff);
+            border-radius:45px;position:absolute;left:15px;top:140px;
+            cursor:grab;transition:transform 0.05s linear;
+        }
+        .cylinder:active{cursor:grabbing}
+        /* 底部两个支撑圆 */
+        .base-dot{
+            width:26px;height:26px;border-radius:50%;background:#667eea;
+            position:absolute;bottom:20px;
+        }
+        .dot1{left:22px}
+        .dot2{right:22px}
+        /* 时间到抖动动画 */
+        @keyframes shake {
+            0%,100%{transform:translateX(0)}
+            20%{transform:translateX(-8px)}
+            40%{transform:translateX(8px)}
+            60%{transform:translateX(-8px)}
+            80%{transform:translateX(8px)}
+        }
+        .shake{animation:shake 0.2s infinite}
         #restartBtn{
-            margin-top:20px;padding:12px 36px;font-size:18px;
+            margin-top:30px;padding:12px 36px;font-size:18px;
             background:#22c55e;color:#fff;border:none;border-radius:8px;
             cursor:pointer;display:none;
         }
+        .tips{margin-top:20px;font-size:15px;opacity:0.7}
     </style>
 </head>
 <body>
@@ -32,44 +52,70 @@
         <div>剩余时间：<span id="time">5</span>s</div>
         <div>历史最高：<span id="maxScore">0</span></div>
     </div>
-    <button id="clickBtn">点击加分！</button>
-    <br>
+
+    <div class="container">
+        <div class="cylinder" id="dragBar"></div>
+        <div class="base-dot dot1"></div>
+        <div class="base-dot dot2"></div>
+    </div>
+
     <button id="restartBtn" onclick="restartGame()">重新挑战</button>
-    <div class="tips">5秒极速挑战，疯狂点击比拼手速，最高分自动保存</div>
+    <div class="tips">按住圆柱上下滑动加分，限时5秒，分数自动保存</div>
 
     <script>
-        // DOM元素
         const scoreDom = document.getElementById('score');
         const timeDom = document.getElementById('time');
         const maxDom = document.getElementById('maxScore');
-        const btn = document.getElementById('clickBtn');
+        const dragBar = document.getElementById('dragBar');
         const restartBtn = document.getElementById('restartBtn');
 
-        // 游戏数据（修改此处时间为5）
         let score = 0;
         let timeLeft = 5;
         let timer = null;
         let gameStart = false;
-
-        // 读取本地存储最高分
-        let maxScore = localStorage.getItem('clickMax') || 0;
+        let gameOver = false;
+        let maxScore = localStorage.getItem('slideMax') || 0;
         maxDom.innerText = maxScore;
 
-        // 点击按钮逻辑
-        btn.onclick = function(){
-            // 游戏未开始则启动倒计时
+        // 拖拽变量
+        let isDrag = false;
+        let barTop = 140;
+        const minTop = 20;
+        const maxTop = 260;
+
+        // 鼠标按下
+        dragBar.onmousedown = (e)=>{
+            if(gameOver) return;
+            isDrag = true;
             if(!gameStart){
                 startTimer();
                 gameStart = true;
             }
-            score += 1;
-            scoreDom.innerText = score;
+            e.preventDefault();
         }
+        // 鼠标移动
+        document.onmousemove = (e)=>{
+            if(!isDrag || gameOver) return;
+            const box = dragBar.parentElement.getBoundingClientRect();
+            let newTop = e.clientY - box.top - 70;
+            // 边界限制
+            if(newTop < minTop) newTop = minTop;
+            if(newTop > maxTop) newTop = maxTop;
+            // 滑动距离变化则加分
+            if(Math.abs(newTop - barTop) > 6){
+                score += 1;
+                scoreDom.innerText = score;
+                barTop = newTop;
+                dragBar.style.top = barTop + 'px';
+            }
+        }
+        // 松开停止拖拽
+        document.onmouseup = ()=> isDrag = false;
 
-        // 倒计时函数
+        // 倒计时
         function startTimer(){
             timer = setInterval(()=>{
-                timeLeft -= 1;
+                timeLeft--;
                 timeDom.innerText = timeLeft;
                 if(timeLeft <= 0){
                     clearInterval(timer);
@@ -78,17 +124,17 @@
             }, 1000)
         }
 
-        // 游戏结束结算
+        // 游戏结束，开启抖动
         function endGame(){
-            btn.disabled = true;
-            // 更新最高分
+            gameOver = true;
+            dragBar.classList.add('shake');
             if(score > maxScore){
                 maxScore = score;
-                localStorage.setItem('clickMax', maxScore);
+                localStorage.setItem('slideMax', maxScore);
                 maxDom.innerText = maxScore;
-                alert(`时间到！新纪录诞生！本次得分：${score}`);
+                alert(`时间结束！新纪录！得分：${score}`);
             }else{
-                alert(`时间到！本次得分：${score}，最高纪录：${maxScore}`);
+                alert(`时间结束！本次得分：${score}，最高：${maxScore}`);
             }
             restartBtn.style.display = 'inline-block';
         }
@@ -99,9 +145,12 @@
             score = 0;
             timeLeft = 5;
             gameStart = false;
+            gameOver = false;
+            barTop = 140;
+            dragBar.style.top = barTop + 'px';
+            dragBar.classList.remove('shake');
             scoreDom.innerText = 0;
             timeDom.innerText = 5;
-            btn.disabled = false;
             restartBtn.style.display = 'none';
         }
     </script>
